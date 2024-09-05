@@ -252,7 +252,7 @@ def example_loader(
     while True:
         record = next(record_iterator) if idx is None else record_iterator.send(idx)
 
-        if skip_first:
+        if skip_first or idx == -1:
             idx = yield {}
             skip_first = False
         else:
@@ -337,7 +337,7 @@ def sequence_loader(
     while True:
         record = next(record_iterator) if idx is None else record_iterator.send(idx)
 
-        if skip_first:
+        if skip_first or idx == -1:
             idx = yield {}
             skip_first = False
         else:
