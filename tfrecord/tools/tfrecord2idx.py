@@ -40,6 +40,14 @@ def create_index(tfrecord_file: str, index_file: str) -> None:
     infile.close()
     outfile.close()
 
+def create_indexes_in_nested_folders(tfrecord_dir):
+    for root, dirs, files in os.walk(tfrecord_dir):
+        for file in files:
+            tfrecord_file = os.path.join(root, file)
+            if os.path.isfile(tfrecord_file): #file.endswith(".tfrecord"):
+                print(file)
+                index_file = os.path.splitext(tfrecord_file)[0] + ".tfindex"
+                create_index(tfrecord_file, index_file)
 
 def create_indices(tfrecord_dir: str) -> None:
     """Create indices for all tfrecord files in the directory.
@@ -72,9 +80,9 @@ def main():
         sys.exit()
 
     if os.path.isdir(sys.argv[1]):
-        create_indices(sys.argv[1])
+        create_indexes_in_nested_folders(sys.argv[1])
     else:
-        create_index(sys.argv[1], sys.argv[2])
+        create_indexes_in_nested_folders(sys.argv[1], sys.argv[2])
 
 
 if __name__ == "__main__":
