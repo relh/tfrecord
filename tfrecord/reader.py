@@ -100,6 +100,7 @@ def tfrecord_iterator(
             if map_access and received_index is not None:
                 if received_index == -1:
                     file.close()
+                    yield {}
                     break
                 start_offset = index[received_index + start_index]
                 file.seek(start_offset)
@@ -110,7 +111,7 @@ def tfrecord_iterator(
         if shard is None:
             offset = np.random.choice(index)
             yield from read_records(offset)
-            yield from read_records(0, offset)
+            #yield from read_records(0, offset)
         else:
             num_records = len(index)
             shard_idx, shard_count = shard
