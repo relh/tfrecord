@@ -100,6 +100,7 @@ def tfrecord_iterator(
             if map_access and received_index is not None:
                 if received_index == -1:
                     file.close()
+                    yield {}
                     break
                 start_offset = index[received_index + start_index]
                 file.seek(start_offset)
@@ -110,7 +111,7 @@ def tfrecord_iterator(
         if shard is None:
             offset = np.random.choice(index)
             yield from read_records(offset)
-            yield from read_records(0, offset)
+            #yield from read_records(0, offset)
         else:
             num_records = len(index)
             shard_idx, shard_count = shard
@@ -247,16 +248,18 @@ def example_loader(
         map_access=map_access,
     )
 
+    idx = None
     skip_first = map_access
-    for record in record_iterator:
-        if skip_first:
-            yield {} 
-            skip_first = False
-            continue
-        example = example_pb2.Example()
-        example.ParseFromString(record)
+    while True:
+        record = next(record_iterator) if idx is None else record_iterator.send(idx)
 
-        yield extract_feature_dict(example.features, description, typename_mapping)
+        if skip_first or idx == -1:
+            idx = yield {}
+            skip_first = False
+        else:
+            example = example_pb2.Example()
+            example.ParseFromString(record)
+            idx = yield extract_feature_dict(example.features, description, typename_mapping)
 
 
 def sequence_loader(
@@ -330,22 +333,24 @@ def sequence_loader(
         map_access=map_access,
     )
 
+    idx = None
     skip_first = map_access
-    for record in record_iterator:
-        if skip_first:
-            yield {}, {} 
+    while True:
+        record = next(record_iterator) if idx is None else record_iterator.send(idx)
+
+        if skip_first or idx == -1:
+            idx = yield {}
             skip_first = False
-            continue
+        else:
+            example = example_pb2.Example()
+            example.ParseFromString(record)
 
-        example = example_pb2.SequenceExample()
-        example.ParseFromString(record)
+            context = extract_feature_dict(example.context, context_description, typename_mapping)
+            features = extract_feature_dict(
+                example.feature_lists, features_description, typename_mapping
+            )
 
-        context = extract_feature_dict(example.context, context_description, typename_mapping)
-        features = extract_feature_dict(
-            example.feature_lists, features_description, typename_mapping
-        )
-
-        yield context, features
+            idx = yield context, features
 
 
 def tfrecord_loader(

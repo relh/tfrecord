@@ -80,28 +80,8 @@ class TFRecordMapDataset(torch.utils.data.Dataset):
             self.it.send(-1)
 
     def __getitem__(self, index):
-        if self.initialized is False:
-            worker_info = torch.utils.data.get_worker_info()
-            if worker_info is not None:
-                self.shard = worker_info.id, worker_info.num_workers
-                np.random.seed(worker_info.seed % np.iinfo(np.uint32).max)
-            else:
-                self.shard = None
-
-            self.it = reader.tfrecord_loader(
-                data_path=self.data_path,
-                index_path=self.index_path,
-                description=self.description,
-                shard=self.shard,
-                sequence_description=self.sequence_description,
-                compression_type=self.compression_type,
-                map_access=True,
-            )
-            try:
-                next(self.it)
-            except:
-                pass
-            self.initialized = True
+        if not self.initialized:
+            self.initialize()
 
         if self.shuffle_queue_size:
             self.it = iterator_utils.shuffle_iterator(self.it, self.shuffle_queue_size)
@@ -112,10 +92,20 @@ class TFRecordMapDataset(torch.utils.data.Dataset):
         return record
 
     def __len__(self):
-        if self.shard is None:
-            return len(self.index)
-        else:
-            return len(self.index) / self.shard[1]
+        return len(self.index)
+
+    def initialize(self):
+        self.it = reader.tfrecord_loader(
+            data_path=self.data_path,
+            index_path=self.index_path,
+            description=self.description,
+            shard=self.shard,
+            sequence_description=self.sequence_description,
+            compression_type=self.compression_type,
+            map_access=True,
+        )
+        next(self.it)
+        self.initialized = True
 
 class TFRecordDataset(torch.utils.data.IterableDataset):
     """Parse (generic) TFRecords dataset into `IterableDataset` object,
